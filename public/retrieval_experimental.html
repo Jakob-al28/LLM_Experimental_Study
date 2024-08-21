@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search Experiment Interface</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="js/languageData.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="task">
+            <div id="timer" class="timer"></div><br>
+            <h2>Task: Identify three leading research papers.</h2>
+            <P></P>
+            <!--p>You are a student at the University of Paderborn and you need to come up with topics for research papers.</p-->
+            <p><strong>Identify three influential research papers on human-AI interaction and name their authors.</strong></p>
+            <p><strong>You may use the tool on the right side.</strong> Copying and pasting information into the textbox for the Large language model is allowed.<br>
+            You have 6 minutes to solve this task.</p>
+            <p>Your results will be evaluated based on correctness and relevance.</p>
+            <p id="disclaimer"><strong>Please do not switch tabs during the experiment. All activity is logged to prevent cheating.</strong></p>
+            <p>Please enter the research paper and their authors in the boxes below.</p>
+            <form>
+                <label for="topic1">Research Paper Title and Author 1:</label><br><br>
+                <textarea class="topic-field" id="topic1" name="topic1" oninput="checkInputs()"></textarea><br>
+        
+                <label for="topic2">Research Paper Title and Author  2:</label><br><br>
+                <textarea class="topic-field" id="topic2" name="topic2" oninput="checkInputs()"></textarea><br>
+        
+                <label for="topic3">Research Paper Title and Author  3:</label><br><br>
+                <textarea class="topic-field" id="topic3" name="topic3" oninput="checkInputs()"></textarea><br>
+            </form>
+            <button class="button-submit" id="submitButton" type="submit" onclick="submitChoice()" disabled>Submit solution</button>
+        </div>
+        <div class="container-right">
+            <div class="search" id="llm-container">
+                <p id="explanation"><strong>This is a Chat-GPT4 interface that can help you with your task. Please use it, by entering your question in the field below and clicking on 'Enter Question'.</strong></p>
+                <div class="search-header">
+                    <input type="text" id="search-input" placeholder="This is an AI-powered bot for you to use...">
+                    <button id="submit-btn" onclick="submitQuery()">Ask Chat-GPT</button>
+                </div>
+                <div id="queries-left">Queries left for this task: 10</div>
+                <div class="results" id="results">  
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/script_retrieval.js"></script>
+    <script src="js/retrieval_experimental.js"></script>
+    <script>         
+        document.addEventListener('DOMContentLoaded', function() {
+            let lang = localStorage.getItem('language') || 'en';
+            applyLanguage(lang);
+        });
+        sessionStorage.setItem('lastVisited', window.location.pathname);
+        function applyLanguage(lang) {
+            const langData = translations[lang];
+            document.querySelector('.task h2').textContent = langData.header;
+
+            // Update paragraphs in the task-gen container
+            const paragraphs = document.querySelectorAll('.task p');
+            //paragraphs[0].textContent = langData.description;
+            paragraphs[1].innerHTML = langData.taskRetrieval;
+            paragraphs[3].textContent = langData.evaluationCriteriaRetrieval;
+            paragraphs[2].innerHTML = langData.timeLimitGenerativeExperimental;
+            paragraphs[5].textContent = langData.inputPromptRetrieval;
+
+            // Update labels for the form inputs
+            document.querySelector('label[for="topic1"]').textContent = langData.topicLabelRetrieval + " 1:";
+            document.querySelector('label[for="topic2"]').textContent = langData.topicLabelRetrieval + " 2:";
+            document.querySelector('label[for="topic3"]').textContent = langData.topicLabelRetrieval + " 3:";
+
+            // Update the submit button
+            document.getElementById('submitButton').textContent = langData.submitButton;
+            document.getElementById('submit-btn').textContent = langData.submitButtonLLM;
+            document.getElementById('search-input').placeholder = langData.llmPlaceholder;
+            document.getElementById('disclaimer').innerHTML = langData.disclaimer;
+            document.getElementById('explanation').innerHTML = langData.explanationLLM;
+            document.getElementById('queries-left').innerHTML = langData.queriesLeft;
+
+            // Update heading
+            //document.querySelector('.task h2').textContent = langData.header;
+    
+            /*paragraphs[0].textContent = langData.description1;
+            paragraphs[1].innerHTML = langData.description2;
+            paragraphs[2].textContent = langData.financialDataDate;
+    
+            // Update table headers and data dynamically
+            const ths = document.querySelectorAll('.balance-sheet th');
+            ths[0].textContent = langData.assets;
+            ths[1].textContent = langData.inMillion;
+            ths[2].textContent = langData.liabilities;
+            ths[3].textContent = langData.inMillion;
+    
+            // Update table rows with dynamic data - assuming table structure is known and consistent
+            const tds = document.querySelectorAll('.balance-sheet td');
+            tds[0].textContent = langData.tangibleAssets;
+            tds[2].textContent = langData.subscribedCapital;
+            tds[4].textContent = langData.financialAssets;
+            tds[6].textContent = langData.capitalReserves;
+            tds[10].textContent = langData.retainedEarnings;
+            tds[12].textContent = langData.currentAssets;
+            tds[14].textContent = langData.netProfit;
+            tds[18].textContent = langData.provisions;
+            tds[22].textContent = langData.liabilities;
+    
+            // Update non-table paragraphs
+            paragraphs[3].innerHTML = langData.shareInfo;
+            paragraphs[4].textContent = langData.taskSubscriptionRight;
+    
+            // Update placeholders and labels in forms and input fields
+            document.getElementById('notepad').placeholder = langData.placeholderNotepad;
+            document.querySelector('label[for="subscription-right"]').textContent = langData.labelSubscriptionRight;
+            document.getElementById('subscription-right').placeholder = langData.placeholderSubscriptionRight;
+            document.getElementById('submitButton').textContent = langData.submitButton;
+            document.getElementById('timer').textContent = langData.timer;
+    
+            // Update search and calculation tools
+            document.getElementById('search-input').placeholder = langData.llmPlaceholder;
+            document.getElementById('submit-btn').textContent = langData.submitButtonLLM;
+            document.getElementById('queries-left').textContent = langData.queriesLeft;
+            //document.getElementById('calculator-input').placeholder = langData.calculatorPlaceholder;
+            //document.querySelector('button.button-submit[onclick="calculate()"]').textContent = langData.calculateButton;
+            //document.querySelector('label[for="result"]').textContent = langData.labelResult;
+            //document.getElementById('result').placeholder = langData.placeholderResult;
+            //document.querySelector('.search h3').textContent = langData.calculator;
+            document.getElementById('total1').textContent = langData.total;
+            document.getElementById('total2').textContent = langData.total;
+            document.getElementById('disclaimer').innerHTML = langData.disclaimer;
+            document.getElementById('explanation').innerHTML = langData.explanationLLM;*/
+        }
+    </script>    
+</body>
+</html>

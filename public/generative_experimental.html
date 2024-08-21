@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search Experiment Interface</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="js/languageData.js"></script>
+    <style>
+        .results {
+            border: 1px solid #ddd;
+            padding: 10px;
+            height: 70%; 
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="task">
+            <div id="timer" class="timer"></div><br>
+            <h2>Task: Generate three research questions on the topic of finance.</h2>
+            <P></P>
+            <!--p>You are a student at the University of Paderborn and you need to come up with topics for research papers.</p-->
+            <p>Think of three research questions that focus on topics in finance and could be investigated.</p>
+            <p>Your results will be evaluated based on originality and relevance.</p>
+            <p><strong>You may use the tool on the right side.</strong> Copying and pasting information into the textbox for the Large language model is allowed.<br>
+            You have 5 minutes to solve this task.</p>
+            <p id="disclaimer"><strong>Please do not switch tabs during the experiment. All activity is logged to prevent cheating.</strong></p>
+            <p></p>
+            <form>
+                <label for="topic1">Topic 1:</label><br><br>
+                <textarea class="topic-field" id="topic1" name="topic1" oninput="checkInputs()"></textarea><br>
+        
+                <label for="topic2">Topic 2:</label><br><br>
+                <textarea class="topic-field" id="topic2" name="topic2" oninput="checkInputs()"></textarea><br>
+        
+                <label for="topic3">Topic 3:</label><br><br>
+                <textarea class="topic-field" id="topic3" name="topic3" oninput="checkInputs()"></textarea><br>
+            </form>
+            <button class="button-submit" id="submitButton" type="submit" onclick="submitChoice()" disabled>Submit solution</button>
+        </div>
+
+        <div class="container-right">
+            <div class="search" id="llm-container">
+                <p id="explanation"><strong>This is a Chat-GPT4 interface that can help you with your task. Please use it, by entering your question in the field below and clicking on 'Enter Question'.</strong></p>
+                <div class="search-header">
+                    <input type="text" id="search-input" placeholder="This is an AI-powered bot for you to use...">
+                    <button id="submit-btn" onclick="submitQuery()">Ask Chat-GPT</button>
+                </div>
+                <div id="queries-left">Queries left for this task: 10</div>
+                <div class="results" id="results">
+                </div>
+            </div>
+            <div class="search" id="search-bar-container" style="display:none;">
+                <div class="search-header">
+                    <button onclick="toggleSearch()">&lt; Back</button>
+                    <input type="text" id="search-input-2" placeholder="This is a search engine for you to use...">
+                    <button id="submit-btn" onclick="submitQuery2()">SUBMIT</button>
+                </div>
+                <div id="queries-left-2">Queries left for this task: 10</div>
+                <div class="results" id="results-2">
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/script_generative.js"></script>
+    <script src="js/generative_experimental.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+        let lang = localStorage.getItem('language') || 'en';
+        applyLanguage(lang);
+    });
+    sessionStorage.setItem('lastVisited', window.location.pathname);
+    function applyLanguage(lang) {
+        const langData = translations[lang];
+        // Update the title of the page
+        document.querySelector('.task h2').textContent = langData.header_gen;
+
+        // Update paragraphs in the task-gen container
+        const paragraphs = document.querySelectorAll('.task p');
+        //paragraphs[0].textContent = langData.description;
+        paragraphs[1].textContent = langData.task;
+        paragraphs[2].textContent = langData.evaluationCriteria;
+        paragraphs[3].innerHTML = langData.timeLimitGenerativeExperimental;
+        paragraphs[5].textContent = langData.inputPrompt;
+
+        // Update labels for the form inputs
+        document.querySelector('label[for="topic1"]').textContent = langData.topicLabel + " 1:";
+        document.querySelector('label[for="topic2"]').textContent = langData.topicLabel + " 2:";
+        document.querySelector('label[for="topic3"]').textContent = langData.topicLabel + " 3:";
+
+        // Update the submit button
+        document.getElementById('submitButton').textContent = langData.submitButton;
+        document.getElementById('submit-btn').textContent = langData.submitButtonLLM;
+        document.getElementById('search-input').placeholder = langData.llmPlaceholder;
+        document.getElementById('disclaimer').innerHTML = langData.disclaimer;
+        document.getElementById('explanation').innerHTML = langData.explanationLLM;
+        document.getElementById('queries-left').innerHTML = langData.queriesLeft;
+    }
+    </script>
+</body>
+</html>

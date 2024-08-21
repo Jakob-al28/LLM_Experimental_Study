@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Thank You</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="js/languageData.js"></script>
+</head>
+<body class="ty-body">
+    <div class="ty-container">
+        <h2 id="thankYouHeader">Thank You</h2>
+        <p id="thankYouMessage">Your responses have been recorded. Thanks for participating in our Experiment.</p>
+        <p id="closePageMessage">You can now close this page.</p>
+    </div>
+</body>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        applyLanguage(localStorage.getItem('language') || 'en');  // Apply language on load based on stored preference or default to German
+    });
+
+    function applyLanguage(lang) {
+        const langData = translations[lang];
+        // Update the text content of the HTML elements based on the selected language
+        document.getElementById('thankYouHeader').textContent = langData.thankYouHeader;
+        document.getElementById('thankYouMessage').textContent = langData.thankYouMessage;
+        document.getElementById('closePageMessage').textContent = langData.closePageMessage;
+    }
+</script>
+</html>

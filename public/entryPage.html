@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Entry Page</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="js/languageData.js"></script>
+</head>
+<body class="entry-body">
+    <div class="entry-container">
+        <h2>Welcome to our Experiment</h2>
+        <p>Thank you for your interest. Please read the following information before proceeding.</p>
+        
+        <!--p>This experiment aims to study the effectiveness of Large Language Models on knowledge worker productivity.</p-->
+        
+        <h3>Instructions</h3>
+        <p>You will be required to complete a series of tasks. Please follow the instructions carefully and use only the resources provided within the interface. <strong>Make sure you stay on this tab for the full experiment to verify that you have adhered to the guidelines.</strong></p>
+        
+        <h3>Consent</h3>
+        <p>By proceeding, you consent to participate in this study. Your data will be used for research purposes only and will be kept confidential. For the purpose of ensuring that each participant attends this experiment only once, a cookie related to this experiment will be stored for 90 days.</p>
+        <a id="read-privacy-btn" href="#" onclick="openPrivacyModal(); return false;">Read privacy policy</a> <br><br>
+        <label>
+            <input type="checkbox" id="consent-checkbox"> <span id="consent-label"> I agree to participate in this study. </span>
+        </label>
+        
+        <br><br>
+        <button id="start-experiment-btn" class="button-submit" disabled>Read Privacy Policy</button>
+        
+        <div id="privacyModal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.4)">
+            <div style="background-color:#fff; margin:10% auto; padding:20px; border:1px solid #888; width:50%;">
+                <span onclick="closePrivacyModal();" style="float:right; cursor:pointer;">&times;</span>
+                <h2 id="privacyPolicyTitle">Privacy Policy</h2>
+                <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+                    <p id="responsibleContactDetails"><strong>Responsible Contact Details:</strong> Jakob28@mail.uni-paderborn.de, Faculty of Business Sciences, Chair of Data Analytics, University of Paderborn.</p>
+                    <p id="personalDataProcessed"><strong>Personal Data Processed:</strong> During this experiment, cookies and IP addresses are temporarily stored to ensure that each participant only completes the experiment once. All other data collected during the experiment remain anonymous and are not linked to personal identifiers.</p>
+                    <p id="purposeOfDataProcessing"><strong>Purpose of Data Processing:</strong> The collection of this data is exclusively for research purposes to study the effectiveness of Large Language Models on the productivity of knowledge workers.</p>
+                    <p id="legalBasis"><strong>Legal Basis:</strong> The processing of the data is based on your consent in accordance with Art. 6(1)(a) of the GDPR, which you expressly grant by continuing with the experiment.</p>
+                    <p id="recipientsOfTheData"><strong>Recipients of the Data:</strong> No personal data are disclosed to third parties. The anonymously collected data may be published for scientific purposes, however without any personal attribution.</p>
+                    <p id="durationOfStorage"><strong>Duration of Storage:</strong> Cookies and IP addresses are stored for 60 days in the context of this experiment and then deleted. Anonymous data may be stored for a longer duration if needed for scientific evaluation and publication.</p>
+                    <p id="rightsOfDataSubjects"><strong>Rights of Data Subjects:</strong> You have the right to request information about the data stored about you, to have it corrected or deleted, to restrict processing, as well as the right to data portability. You also have the right to withdraw your consent at any time, which does not affect the lawfulness of the processing based on the consent until the withdrawal.</p>
+                    <p id="contactForQuestionsOrConcerns"><strong>Contact for Questions or Concerns:</strong> If you have any questions about the processing of your personal data, you can contact the responsible person at any time: Jakob28@mail.uni-paderborn.de.</p>
+                </div>
+            </div>
+        </div>
+        
+
+        <div class="language-selector">
+            <label for="languageSelect"><strong>Change Language:</strong></label>
+            <select id="languageSelect">
+              <option value="en">English</option>
+              <option value="de">Deutsch</option>
+            </select>
+        </div>        
+    </div>
+    <script>
+        function openPrivacyModal() {
+            document.getElementById('privacyModal').style.display = 'block';
+        }
+
+        function closePrivacyModal() {
+            document.getElementById('privacyModal').style.display = 'none';
+        }
+        document.getElementById('consent-checkbox').addEventListener('change', function() {
+            document.getElementById('start-experiment-btn').disabled = !this.checked;
+        });
+
+        document.getElementById('start-experiment-btn').addEventListener('click', async function() {
+            try {
+                const response = await fetch('/get-random-page');
+                const data = await response.json();
+                if (data.page) {
+                window.location.href = data.page;
+                } else {
+                alert('Failed to retrieve the experiment page. Please try again.');
+                }
+            } catch (error) {
+                console.error('Failed to start experiment:', error);
+                alert('Error starting the experiment. Please check your connection and try again.');
+            }
+        });
+
+        
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                const checkbox = document.getElementById('consent-checkbox');
+                if (document.activeElement === checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                    checkbox.dispatchEvent(new Event('change')); 
+                }
+            }
+        });
+        document.addEventListener('DOMContentLoaded', function() {
+            applyLanguage(localStorage.getItem('language') || 'en');  // Apply language on load based on stored preference or default to German
+        });
+
+        function applyLanguage(lang) {
+            const langData = translations[lang];
+            document.querySelector('.entry-container h2').textContent = langData.welcome;
+            document.querySelectorAll('.entry-container p')[0].textContent = langData.thankYou;
+            //document.querySelectorAll('.entry-container p')[1].textContent = langData.studyAim;
+            document.querySelectorAll('.entry-container h3')[0].textContent = langData.Instructions;
+            document.querySelectorAll('.entry-container p')[1].innerHTML = langData.instructions;
+            document.querySelectorAll('.entry-container h3')[1].textContent = langData.Consent;
+            document.querySelectorAll('.entry-container p')[2].textContent = langData.consent;
+            document.getElementById('consent-label').textContent = langData.agree;
+            document.getElementById('read-privacy-btn').textContent = langData.privacyPolicy;
+            document.getElementById('privacyPolicyTitle').textContent = langData.privacyPolicyTitle;
+            document.getElementById('start-experiment-btn').textContent = langData.startButton;
+            document.querySelector('.language-selector label').innerHTML = langData.changeLanguage;
+            document.getElementById('responsibleContactDetails').innerHTML = langData.responsibleContactDetails;
+            document.getElementById('personalDataProcessed').innerHTML = langData.personalDataProcessed;
+            document.getElementById('purposeOfDataProcessing').innerHTML = langData.purposeOfDataProcessing;
+            document.getElementById('legalBasis').innerHTML = langData.legalBasis;
+            document.getElementById('recipientsOfTheData').innerHTML = langData.recipientsOfTheData;
+            document.getElementById('durationOfStorage').innerHTML = langData.durationOfStorage;
+            document.getElementById('rightsOfDataSubjects').innerHTML = langData.rightsOfDataSubjects;
+            document.getElementById('contactForQuestionsOrConcerns').innerHTML = langData.contactForQuestionsOrConcerns;
+        }
+
+
+        document.getElementById('languageSelect').onchange = function() {
+            localStorage.setItem('language', this.value);
+            applyLanguage(this.value);  // Apply language without reloading the page  
+        };
+
+        function matchLanguageSelection () {
+            var storedLanguage = localStorage.getItem('language');
+            var languageSelect = document.getElementById('languageSelect');
+
+            // If there's a stored language, set the dropdown to match it
+            if (storedLanguage) {
+                languageSelect.value = storedLanguage;
+            }
+        }
+        window.onload = matchLanguageSelection;
+    </script>
+</body>
+</html>

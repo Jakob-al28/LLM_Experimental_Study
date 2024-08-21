@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search Experiment Interface</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="js/languageData.js"></script>
+</head>
+<body class="body-gen">
+    <div class="container-generative">
+        <div class="task-gen">
+            <div id="timer" class="timer"></div><br>
+            <h2>Task: Generate three research questions on the topic of finance.</h2>
+            <p></p>
+            <!--p>You are a student at the University of Paderborn and you need to come up with topics for research papers.</p-->
+            <p>Think of three research questions that focus on topics in finance and could be investigated.</p>
+            <P></P>
+            <p>Your results will be evaluated based on originality and relevance.</p>
+            <p>You have 6 minutes to solve this task.</p>
+            <p id="disclaimer"><strong>Please do not switch tabs during the experiment. All activity is logged to prevent cheating.</strong></p>
+            <p>Please enter three topics on finance in the boxes below.</p>
+            <form>
+                <label for="topic1">Topic 1:</label><br><br>
+                <textarea class="topic-field" id="topic1" name="topic1" oninput="checkInputs()"></textarea><br>
+        
+                <label for="topic2">Topic 2:</label><br><br>
+                <textarea class="topic-field" id="topic2" name="topic2" oninput="checkInputs()"></textarea><br>
+        
+                <label for="topic3">Topic 3:</label><br><br>
+                <textarea class="topic-field" id="topic3" name="topic3" oninput="checkInputs()"></textarea><br>
+            </form>
+            <button class="button-submit" id="submitButton" type="submit" onclick="submitChoice()" disabled>Submit</button>
+        </div>
+    </div>
+    <script src="js/script_generative.js"></script>
+    <script src="js/generative_control.js"></script>
+    <script>
+    // Load language Data
+    document.addEventListener('DOMContentLoaded', function() {
+        let lang = localStorage.getItem('language') || 'en';
+        applyLanguage(lang);
+    });
+    sessionStorage.setItem('lastVisited', window.location.pathname);
+    function applyLanguage(lang) {
+        const langData = translations[lang];
+        // Update the title of the page
+        document.querySelector('.task-gen h2').textContent = langData.header_gen;
+
+        // Update paragraphs in the task-gen container
+        const paragraphs = document.querySelectorAll('.task-gen p');
+        //paragraphs[0].textContent = langData.description;
+        paragraphs[1].textContent = langData.task;
+        paragraphs[3].textContent = langData.evaluationCriteria;
+        paragraphs[4].innerHTML = langData.timeLimit;
+        paragraphs[5].innerHTML = langData.disclaimer;
+        paragraphs[6].textContent = langData.inputPrompt;
+
+        // Update labels for the form inputs
+        document.querySelector('label[for="topic1"]').textContent = langData.topicLabel + " 1:";
+        document.querySelector('label[for="topic2"]').textContent = langData.topicLabel + " 2:";
+        document.querySelector('label[for="topic3"]').textContent = langData.topicLabel + " 3:";
+
+        // Update the submit button
+        document.getElementById('submitButton').textContent = langData.submitButton;
+        //document.getElementById('disclaimer').innerHTML = langData.disclaimer;
+
+        // Update the timer label if needed
+        //document.getElementById('timer').textContent = langData.time;
+    }
+    </script>
+</body>
+</html>

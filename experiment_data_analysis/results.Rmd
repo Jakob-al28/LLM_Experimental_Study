@@ -1,0 +1,699 @@
+---
+title: "Generative and Retrieval Task Analysis"
+author: Jakob Al-Khuzayi
+output: learnr::tutorial
+runtime: shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(repos = c(CRAN = "https://cran.r-project.org"))
+
+# Install necessary packages if not already installed
+packages <- c("readxl", "dplyr", "ggplot2", "tidyr", "car", "tm", "SnowballC", "tidytext", "text", "stringr", "textstem", "quanteda.textstats", "googleLanguageR", "readxl", "writexl")
+
+install_if_missing <- function(p) {
+  if (!requireNamespace(p, quietly = TRUE)) {
+    install.packages(p)
+  }
+}
+
+lapply(packages, install_if_missing)
+
+library(readxl)
+library(dplyr)
+library(gridExtra)
+library(ggplot2)
+library(tidyr)
+library(car)
+library(tm)
+library(SnowballC)
+library(tidytext)
+library(quanteda)
+library(stringr)
+library(textstem)
+library(tidyverse)
+theme_set(theme_classic())
+library(caret)
+library(gmodels)
+library(Metrics)
+library(LDAvis)
+library(pROC)
+library(gmodels)
+library(SnowballC)
+library(stm)
+library(lexicon)
+library(rpart)
+library(rpart.plot)
+library(e1071)
+library(shiny)
+library(learnr)
+library(tidyverse)
+library(lubridate)
+library(caret)
+library(stargazer)
+library(googleLanguageR)
+library(writexl)
+library(Metrics)
+library(quanteda.textstats)
+
+options(scipen=999, tutorial.exercise.timelimit = 120)
+set.seed(42)
+theme_set(theme_classic())
+knitr::opts_chunk$set(echo = FALSE)
+
+data <- "C:/Users/04jak/Downloads/Jakob/Uni/SS24/SS24/Exzellenzseminar/code/R_ShinyApp/data.xlsx"
+
+# gl_auth("path_to_your_api_key.json")
+# data_not_translated <- "C:/Users/04jak/Downloads/Jakob/Uni/SS24/SS24/Exzellenzseminar/code/R_ShinyApp/data_not_translated.xlsx"
+# translate_text <- function(text, target = "en") {
+#  translated <- gl_translate(text, target = target)
+#  return(translated$translatedText)
+# }
+# data$text <- sapply(data$text, translate_text, target = "en")
+# write_xlsx(data, "data.xlsx")
+#
+#
+#
+#
+#
+
+creativity_data <- read_excel(data, sheet = "Data Similarity")
+customstopwords <- stopwords('de')
+
+preprocessed <- textProcessor(creativity_data$text, metadata = creativity_data, 
+                              customstopwords = customstopwords)
+out <- prepDocuments(preprocessed$documents, preprocessed$vocab, preprocessed$meta, lower.thresh = 2)
+
+model_10 <- stm(documents = out$documents,
+                vocab = out$vocab,
+                data = out$meta,
+                K = 10,
+                max.em.its = 25,
+                init.type = "Spectral",
+                seed=42)
+```
+
+```{r seed}
+set.seed(42)
+```
+## Introduction
+This script demonstrates our findings on the effect of large language models on generative and retrieval based tasks.
+
+### Load & transform data
+
+```{r data, exercise=TRUE, exercise.setup="seed"}
+generative_data <- read_excel(data, sheet = "Generative Task Data")
+retrieval_data <- read_excel(data, sheet = "Retrieval Task Data")
+creativity_data <- read_excel(data, sheet = "Data Similarity")
+
+generative_data <- generative_data %>% 
+  mutate(
+    gender = as.factor(gender),
+    education_level = as.factor(education_level)
+  ) 
+
+retrieval_data <- retrieval_data %>% 
+  mutate(
+    gender = as.factor(gender),
+    education_level = as.factor(education_level),
+    occupation = as.factor(occupation)
+  )
+```
+
+## Retrieval Task Analysis
+#### The scores range from 0 to 3. Participants earned 0.5 points each time they correctly submitted either the author's name or the title. However, if the paper was not deemed influential, 0.5 points were deducted. A paper was considered influential if it had more than 30 citations.
+
+### Summarize statistics for Retrieval Task Data
+
+```{r desc_ret, exercise=TRUE, exercise.setup="data"}
+# Summary for scores grouped by with_llm
+summary_by_llm <- tapply(retrieval_data$sum_correct, retrieval_data$with_llm, summary)
+
+names(summary_by_llm) <- c("Without LLM", "With LLM")
+
+summary_by_llm
+```
+
+### Create Boxplos
+#### The observations with low accuracy stem from subjects submitting research papers that weren't very influential. 
+```{r ret_box_hist, exercise=TRUE, exercise.setup="data"}
+boxplot_retrieval <- ggplot(retrieval_data, aes(x = factor(with_llm), y = sum_correct, fill = factor(with_llm))) +
+  geom_boxplot(width = 0.5, outlier.shape = NA,  alpha = 0.7) +
+  labs(title = "", y = "Accuracy", x = "") +
+  scale_x_discrete(labels = c("0" = "Without LLM", "1" = "With LLM")) +
+  theme_classic(base_size = 13) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    axis.title.y = element_text(margin = margin(r = 10)),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    plot.margin = unit(c(1, 1, 1, 1), "cm"),
+    legend.position = "none" 
+  ) +
+  scale_fill_manual(values = c("#1f77b4", "#ff7f0e")) + ylim(floor(1) - 0.1, NA) +  
+  geom_dotplot(binaxis = "y", stackdir = "center", dotsize = 0.8,  alpha = 0.7)
+
+
+# plot boxplot
+gridExtra::grid.arrange(boxplot_retrieval, ncol = 2)
+```
+
+### Plot Histogram
+#### To accommodate space limitations and because the boxplots conveys the necessary information, these histograms were not included in the research paper.
+```{r ret_hist, exercise=TRUE, exercise.setup="ret_box_hist"}
+par(mfrow = c(2, 2))  # 2 rows, 2 columns
+
+hist(retrieval_data$sum_correct[retrieval_data$with_llm == 0],
+     main = "Accuracy Without LLM",
+     xlab = "sum_correct",
+     col = "#0099f8",
+     border = "white")
+
+hist(log(retrieval_data$sum_correct[retrieval_data$with_llm == 0]),
+     main = "Logarithmic accuracy Without LLM",
+     xlab = "log(sum_correct)",
+     col = "#0099f8",
+     border = "white")
+
+hist(retrieval_data$sum_correct[retrieval_data$with_llm == 1],
+     main = "Accuracy With LLM",
+     xlab = "sum_correct",
+     col = "#e74c3c",
+     border = "white")
+
+hist(log(retrieval_data$sum_correct[retrieval_data$with_llm == 1]),
+     main = "Logarithmic accuracy With LLM",
+     xlab = "log(sum_correct)",
+     col = "#e74c3c",
+     border = "white")
+```
+
+
+### Create Regression models
+#### fit_01 includes a few key variables, focusing on the most important ones, while fit_02 includes all variables for a broader overview.
+#### fit_03 wasn't included in the final paper, due to an excessive amount of predictors, as Model 3 only offers a broader overview of the other possible factors influencing the target variable.
+
+
+```{r ret_model, exercise=TRUE, exercise.setup="data", warning=FALSE}
+library(car)
+fit_01 <- lm(sum_correct ~ with_llm , data = retrieval_data)
+fit_02 <- lm(sum_correct ~ with_llm + User_Experience + age, data = retrieval_data)
+fit_03 <- lm(sum_correct ~ with_llm + User_Experience + age + Perceived_Difficulty + Perceived_Productivity + gender, data = retrieval_data)
+
+aic_values <- c(AIC(fit_01), AIC(fit_02), AIC(fit_03))
+bic_values <- c(BIC(fit_01), BIC(fit_02), BIC(fit_03))
+
+stargazer(fit_01, fit_02, fit_03, 
+  intercept.bottom = FALSE, 
+  single.row = TRUE,
+  align = TRUE,
+  type = "text",
+  covariate.labels = c("Intercept", "LLM Usage", "User Experience", "Age", 
+                      "Perceived Difficulty", "Perceived Productivity", 
+                      "Gender (Male)", "Time Spent", "Semester"),  
+          omit.stat = c("f", "ser", "rsq", "adj.rsq", "n"),  
+          add.lines = list(
+            c("Observations", nobs(fit_01), nobs(fit_02), nobs(fit_03)),
+            c("R2", sprintf("%.3f", summary(fit_01)$r.squared), sprintf("%.3f", summary(fit_02)$r.squared), sprintf("%.3f", summary(fit_03)$r.squared)),
+            c("Adjusted R2", sprintf("%.3f", summary(fit_01)$adj.r.squared), sprintf("%.3f", summary(fit_02)$adj.r.squared), sprintf("%.3f", summary(fit_03)$adj.r.squared)),
+            c("F-statistic", sprintf("%.2f", summary(fit_01)$fstatistic[1]), sprintf("%.2f", summary(fit_02)$fstatistic[1]), sprintf("%.2f", summary(fit_03)$fstatistic[1])),
+            c("Akaike Inf. Crit.", sprintf("%.3f", aic_values[1]), sprintf("%.3f", aic_values[2]), sprintf("%.3f", aic_values[3])),
+            c("Bayesian Inf. Crit.", sprintf("%.3f", bic_values[1]), sprintf("%.3f", bic_values[2]), sprintf("%.3f", bic_values[3]))
+          )
+)
+```
+
+## Generative Task Analysis
+#### The results were assessed by two individuals using an evaluation framework, which is outlined as follows:
+
+#### Relevant
+
+1. **Not relevant**: The question does not pertain to human-AI interaction.
+2. **Slightly relevant**: The question touches on human-AI interaction but is mostly focused on unrelated aspects.
+3. **Moderately relevant**: The question relates to human-AI interaction but lacks depth or focus.
+4. **Very relevant**: The question is focused on human-AI interaction and explores an important aspect.
+5. **Extremely relevant**: The question is deeply rooted in human-AI interaction, offering novel insights or perspectives.
+
+#### Original
+
+1. **Very unoriginal**: Mirrors existing questions with no new perspective.
+2. **Somewhat original**: Has elements of existing questions.
+3. **Moderately original**: Blends familiar concepts in a unique way.
+4. **Very original**: Introduces concepts or combinations not commonly discussed.
+5. **Extremely original**: Approaches the topic from an entirely new angle.
+
+#### Subjects could therefore gain a maximum of 15 points, or 0 points if they submitted nothing.
+#### Cohen's Kappa was used to evaluate interrater reliability, yielding the following results: <br> relevance: 0.5385, originality: 0.5035.
+
+### Summarize statistics for Generative Task Data
+```{r desc_gen, exercise=TRUE, exercise.setup="data"}
+# Summary for sum_original grouped by with_llm
+summary_sum_original_by_llm <- tapply(generative_data$sum_original, generative_data$with_llm, summary)
+
+# Summary for sum_relevant grouped by with_llm
+summary_sum_relevant_by_llm <- tapply(generative_data$sum_relevant, generative_data$with_llm, summary)
+
+names(summary_sum_original_by_llm) <- c("Original without LLM", "Original with LLM")
+names(summary_sum_relevant_by_llm) <- c("Relevant without LLM", "Relevant with LLM")
+
+summary_sum_original_by_llm
+summary_sum_relevant_by_llm
+```
+
+### Boxplot
+```{r gen_box_hist, exercise=TRUE, exercise.setup="data"}
+boxplot_original_generative <- ggplot(generative_data, aes(x = factor(with_llm, labels = c("Without LLM", "With LLM")), y = sum_original, fill = factor(with_llm))) +
+  geom_boxplot(width = 0.5) +
+  labs(title = "", y = "Originality", x = "") +
+  scale_x_discrete(labels = c("0" = "Without LLM", "1" = "With LLM")) +
+  theme_classic(base_size = 13) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    axis.title.y = element_text(margin = margin(r = 10)),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    plot.margin = unit(c(1, 1, 1, 1), "cm"),
+    legend.position = "none" # Remove the legend
+  ) +
+  scale_fill_manual(values = c("#0099f8", "#e74c3c")) +
+  geom_dotplot(binaxis = "y", stackdir = "center", dotsize = 0.8)
+
+
+boxplot_relevance_generative <- ggplot(generative_data, aes(x = factor(with_llm, labels = c("Without LLM", "With LLM")), y = sum_relevant, fill = factor(with_llm))) +
+  geom_boxplot(width = 0.5) +
+  labs(title = "", y = "Relevance", x = "") +
+  scale_x_discrete(labels = c("0" = "Without LLM", "1" = "With LLM")) +
+  theme_classic(base_size = 13) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    axis.title.y = element_text(margin = margin(r = 10)),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    plot.margin = unit(c(1, 1, 1, 1), "cm"),
+    legend.position = "none" # Remove the legend
+  ) +
+  scale_fill_manual(values = c("#0099f8", "#e74c3c")) + 
+  geom_dotplot(binaxis = "y", stackdir = "center", dotsize = 0.8)
+
+gridExtra::grid.arrange(boxplot_original_generative, boxplot_relevance_generative, ncol = 2)
+```
+
+### Plot Histogram
+#### To accommodate space limitations and because the boxplots convey the necessary information, these histograms were not included in the research paper.
+```{r gen_hist, exercise=TRUE, exercise.setup="gen_box_hist"}
+# Create a new set of histograms for sum_original
+par(mfrow = c(2, 2))  # 2 rows, 2 columns
+
+hist(generative_data$sum_original[generative_data$with_llm == 0],
+     main = "Originality Without LLM",
+     xlab = "sum_original",
+     col = "#0099f8",
+     border = "white")
+
+hist(log(generative_data$sum_original[generative_data$with_llm == 0]),
+     main = "Logarithmic Originality Without LLM",
+     xlab = "log(sum_original)",
+     col = "#0099f8",
+     border = "white")
+
+hist(generative_data$sum_original[generative_data$with_llm == 1],
+     main = "Originality With LLM",
+     xlab = "sum_original",
+     col = "#e74c3c",
+     border = "white")
+
+hist(log(generative_data$sum_original[generative_data$with_llm == 1]),
+     main = "Logarithmic Originality With LLM",
+     xlab = "log(sum_original)",
+     col = "#e74c3c",
+     border = "white")
+
+# Create a new set of histograms for sum_relevant
+par(mfrow = c(2, 2))  # 2 rows, 2 columns
+
+hist(generative_data$sum_relevant[generative_data$with_llm == 0],
+     main = "Relevance Without LLM",
+     xlab = "sum_relevant",
+     col = "#0099f8",
+     border = "white")
+
+hist(log(generative_data$sum_relevant[generative_data$with_llm == 0]),
+     main = "Logarithmic Relevance Without LLM",
+     xlab = "log(sum_relevant)",
+     col = "#0099f8",
+     border = "white")
+
+hist(generative_data$sum_relevant[generative_data$with_llm == 1],
+     main = "Relevance With LLM",
+     xlab = "sum_relevant",
+     col = "#e74c3c",
+     border = "white")
+
+hist(log(generative_data$sum_relevant[generative_data$with_llm == 1]),
+     main = "Logarithmic Relevance With LLM",
+     xlab = "log(sum_relevant)",
+     col = "#e74c3c",
+     border = "white")
+```
+
+
+### Evaluating relevance & originality with regression models
+
+```{r gen_model_rel, exercise=TRUE, exercise.setup="data", warning=FALSE}
+# Fit the models
+fit_04 <- lm(sum_relevant ~ with_llm, data = generative_data)
+fit_05 <- lm(sum_relevant ~ with_llm + education_level, data = generative_data)
+fit_06 <- lm(sum_original ~ with_llm, data = generative_data)
+fit_07 <- lm(sum_original ~ with_llm + education_level, data = generative_data)
+
+# Calculate AIC and BIC values for all models
+aic_values <- c(AIC(fit_04), AIC(fit_05), AIC(fit_06), AIC(fit_07))
+bic_values <- c(BIC(fit_04), BIC(fit_05), BIC(fit_06), BIC(fit_07))
+
+# Create the stargazer output
+stargazer(fit_04, fit_05, fit_06, fit_07,
+  intercept.bottom = FALSE, 
+  single.row = FALSE,
+  align = TRUE,
+  type = "text",
+  covariate.labels = c("Intercept", "LLM Usage", "Doctorate Degree", "Master's Degree", "Secondary Education"),
+  omit.stat = c("f", "ser", "rsq", "adj.rsq", "n"),  
+  add.lines = list(
+    c("Observations", nobs(fit_04), nobs(fit_05), nobs(fit_06), nobs(fit_07)),
+    c("R2", 
+      sprintf("%.3f", summary(fit_04)$r.squared), 
+      sprintf("%.3f", summary(fit_05)$r.squared),
+      sprintf("%.3f", summary(fit_06)$r.squared),
+      sprintf("%.3f", summary(fit_07)$r.squared)
+    ),
+    c("Adjusted R2", 
+      sprintf("%.3f", summary(fit_04)$adj.r.squared), 
+      sprintf("%.3f", summary(fit_05)$adj.r.squared),
+      sprintf("%.3f", summary(fit_06)$adj.r.squared),
+      sprintf("%.3f", summary(fit_07)$adj.r.squared)
+    ),
+    c("F-statistic", 
+      sprintf("%.2f", summary(fit_04)$fstatistic[1]), 
+      sprintf("%.2f", summary(fit_05)$fstatistic[1]),
+      sprintf("%.2f", summary(fit_06)$fstatistic[1]),
+      sprintf("%.2f", summary(fit_07)$fstatistic[1])
+    ),
+    c("Akaike Inf. Crit.", 
+      sprintf("%.3f", aic_values[1]), 
+      sprintf("%.3f", aic_values[2]), 
+      sprintf("%.3f", aic_values[3]), 
+      sprintf("%.3f", aic_values[4])
+    ),
+    c("Bayesian Inf. Crit.", 
+      sprintf("%.3f", bic_values[1]), 
+      sprintf("%.3f", bic_values[2]), 
+      sprintf("%.3f", bic_values[3]), 
+      sprintf("%.3f", bic_values[4])
+    )
+  )
+)
+```
+
+
+### Analyzing the perceived difficulty to ensure both tasks lie on the technological frontier
+
+```{r diff_ret, exercise=TRUE, exercise.setup="ret_model", warning=FALSE}
+generative_data$Task_Type <- 0
+retrieval_data$Task_Type <- 1
+
+common_cols <- intersect(colnames(generative_data), colnames(retrieval_data))
+
+generative_data <- generative_data[, common_cols]
+retrieval_data <- retrieval_data[, common_cols]
+
+combined_data <- rbind(generative_data, retrieval_data)
+
+fit_combined <- lm(Perceived_Difficulty ~ Task_Type, data = combined_data)
+
+# Display the results using stargazer
+stargazer(fit_combined,
+          intercept.bottom = FALSE, 
+          single.row = TRUE,
+          align = TRUE,
+          type = "text")
+```
+
+
+<!-- ### Evaluating originality with regression models
+
+```{r gen_model_orig, exercise=TRUE, exercise.setup="gen_model_rel", warning=FALSE}
+fit_07 <- lm(sum_original ~ with_llm, data = generative_data)
+fit_08 <- lm(sum_original ~ with_llm + education_level, data = generative_data)
+
+aic_values <- c(AIC(fit_07), AIC(fit_08))
+bic_values <- c(BIC(fit_07), BIC(fit_08))
+
+stargazer(fit_07, fit_08,
+  intercept.bottom = FALSE, 
+  single.row = TRUE,
+  align = TRUE,
+  type = "text",
+  covariate.labels = c("Intercept", "LLM Usage", "Doctorate Degree", "Master's Degree", "Secondary Education"),
+          omit.stat = c("f", "ser", "rsq", "adj.rsq", "n"),  
+          add.lines = list(
+            c("Observations", nobs(fit_07), nobs(fit_08)),
+            c("R2", sprintf("%.3f", summary(fit_07)$r.squared), sprintf("%.3f", summary(fit_08)$r.squared)),
+            c("Adjusted R2", sprintf("%.3f", summary(fit_07)$adj.r.squared), sprintf("%.3f", summary(fit_08)$adj.r.squared)),
+            c("F-statistic", sprintf("%.2f", summary(fit_07)$fstatistic[1]), sprintf("%.2f", summary(fit_08)$fstatistic[1])),
+            c("Akaike Inf. Crit.", sprintf("%.3f", aic_values[1]), sprintf("%.3f", aic_values[2])),
+            c("Bayesian Inf. Crit.", sprintf("%.3f", bic_values[1]), sprintf("%.3f", bic_values[2]))
+          )
+)
+```
+
+### Fit a Multivariate Regression Model
+
+```{r gen_orig_mult, exercise=TRUE, exercise.setup="gen_model_orig", warning=FALSE}
+fit_07 <- lm(sum_original ~ with_llm + age + User_Experience, data = generative_data)
+fit_08 <- lm(sum_original ~ with_llm + age + gender + Perceived_Difficulty + User_Experience + Perceived_Productivity + time_spent + semester + education_level, data = generative_data)
+fit_09 <- lm(sum_original ~ with_llm + age + gender + Perceived_Difficulty + User_Experience + Perceived_Productivity + time_spent + semester + education_level, data = generative_data)
+
+aic_values <- c(AIC(fit_07), AIC(fit_08), AIC(fit_09))
+bic_values <- c(BIC(fit_07), BIC(fit_08), BIC(fit_09))
+
+stargazer(fit_07, fit_08, fit_09, 
+  intercept.bottom = FALSE, 
+  single.row = TRUE,
+  align = TRUE,
+  type = "text",
+  #covariate.labels = c("Intercept", "LLM Usage", "User Experience", "Age", 
+  #                    "Perceived Difficulty", "Perceived Productivity", 
+  #                    "Gender (Male)", "Semester"),  
+          omit.stat = c("f", "ser", "rsq", "adj.rsq", "n"),  
+          add.lines = list(
+            c("Observations", nobs(fit_07), nobs(fit_08), nobs(fit_09)),
+            c("R2", sprintf("%.3f", summary(fit_07)$r.squared), sprintf("%.3f", summary(fit_08)$r.squared), sprintf("%.3f", summary(fit_09)$r.squared)),
+            c("Adjusted R2", sprintf("%.3f", summary(fit_07)$adj.r.squared), sprintf("%.3f", summary(fit_08)$adj.r.squared), sprintf("%.3f", summary(fit_09)$adj.r.squared)),
+            c("F-statistic", sprintf("%.2f", summary(fit_07)$fstatistic[1]), sprintf("%.2f", summary(fit_08)$fstatistic[1]), sprintf("%.2f", summary(fit_09)$fstatistic[1])),
+            c("Akaike Inf. Crit.", sprintf("%.3f", aic_values[1]), sprintf("%.3f", aic_values[2]), sprintf("%.3f", aic_values[3])),
+            c("Bayesian Inf. Crit.", sprintf("%.3f", bic_values[1]), sprintf("%.3f", bic_values[2]), sprintf("%.3f", bic_values[3]))
+          )
+)
+```
+
+ 
+ggplot(data_training_gen_rel, aes(x = sum_relevant, fill = factor(with_llm))) +
+  geom_density(alpha = 0.6, adjust = 1.2) +
+  labs(title = "Distribution of Relevance Scores by LLM Usage",
+       x = "Relevance",
+       y = "Density",
+       fill = "") +
+  scale_fill_manual(values = c("#1f77b4", "#ff7f0e"), labels = c("Without LLM", "With LLM")) +
+  theme_minimal(base_size = 15) +
+  theme(
+    legend.position = "top",
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    axis.title.y = element_text(margin = margin(r = 10)),
+    panel.grid.major = element_line(color = "gray90"),
+    panel.grid.minor = element_line(color = "gray95"),
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  )
+  
+ggplot(data_training_gen_orig, aes(x = sum_original, fill = factor(with_llm))) +
+  geom_density(alpha = 0.6, adjust = 1.2) +
+  labs(title = "Distribution of Originality Scores by LLM Usage",
+       x = "Originality",
+       y = "Density",
+       fill = "") +
+  scale_fill_manual(values = c("#1f77b4", "#ff7f0e"), labels = c("Without LLM", "With LLM")) +
+  theme_minimal(base_size = 15) +
+  theme(
+    legend.position = "top",
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    axis.title.y = element_text(margin = margin(r = 10)),
+    panel.grid.major = element_line(color = "gray90"),
+    panel.grid.minor = element_line(color = "gray95"),
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white")
+  ) -->
+
+<!-- ### Multivariate Regression with education -->
+<!-- ```{r mult_reg, exercise=TRUE, exercise.setup="gen_model_orig", warning=FALSE} -->
+<!-- fit_04 <- lm(log(sum_original) ~ with_llm + education, data = data_training_gen_orig) -->
+<!-- stargazer(fit_04, intercept.bottom = FALSE, single.row = TRUE, type = "text") -->
+<!-- ``` -->
+
+## Evaluating similarity
+
+We will now evaluate the similarity across the research topics between the groups and inside the groups
+
+### Preprocessing Pipeline
+
+We perform tokenization, lemmatization and stopword removal
+
+```{r similarity, exercise=TRUE, exercise.setup="data"}
+topics_corp <- corpus(creativity_data)
+topics_toks <- quanteda::tokens(topics_corp, 
+                       remove_numbers = TRUE,
+                       remove_punct = TRUE,
+                       remove_symbols = TRUE,
+                       remove_separators = TRUE,
+                       split_hyphens = FALSE,
+                       remove_url = FALSE)
+topics_toks_lower <- tokens_tolower(topics_toks)
+topics_toks_lower_lemmatized <- tokens_replace(topics_toks_lower, pattern = lexicon::hash_lemmas$token, replacement = lexicon::hash_lemmas$lemma)
+topics_toks_lower_lemmatized_no_stopwords <- tokens_remove(topics_toks_lower_lemmatized, pattern = stopwords('de'))
+topics_toks_lower_lemmatized_no_stopwords <- tokens_remove(topics_toks_lower_lemmatized_no_stopwords, pattern = c('amp', 'document'))
+```
+
+### Construct document-term matrix
+
+```{r tf-idf, exercise=TRUE, exercise.setup="similarity"}
+topics_matrix <- dfm(topics_toks_lower_lemmatized_no_stopwords)
+topics_matrix <- dfm_trim(topics_matrix, min_termfreq = 2) 
+topics_matrix_tfidf <- dfm_tfidf(topics_matrix)
+
+docs_with_llm <- topics_matrix_tfidf[generative_data$with_llm == 1, ]
+docs_without_llm <- topics_matrix_tfidf[generative_data$with_llm == 0, ]
+
+similarity_within_llm <- textstat_simil(docs_with_llm, margin = "documents", method = "cosine")
+similarity_without_llm <- textstat_simil(docs_without_llm, margin = "documents", method = "cosine")
+similarity_between_groups <- textstat_simil(docs_with_llm, docs_without_llm, margin = "documents", method = "cosine")
+```
+
+### Perform & calculate cosine similarity
+#### The cosine similarity for the group with LLM yields 0.145 and without LLM yields 0.079.
+#### While 0.145 is still a low value, the density plot supports that LLM-aided responses are slightly more similar to each other than human responses, suggesting that LLM-generated content is slightly less varied than human-only responses.
+```{r cos-sim, exercise=TRUE, exercise.setup="tf-idf"}
+library(ggplot2)
+
+# Create the data frame excluding "Between Groups"
+similarity_data <- data.frame(
+  group = c(rep("With LLM", length(as.vector(similarity_within_llm))),
+            rep("Without LLM", length(as.vector(similarity_without_llm)))),
+  similarity = c(as.vector(similarity_within_llm), as.vector(similarity_without_llm))
+)
+
+# Remove any rows with NA similarity values
+similarity_data <- similarity_data[!is.na(similarity_data$similarity), ]
+
+# Define the x-axis range for the plot
+x_axis_range <- c(0, 0.5)
+
+# Plot the cosine similarity distributions for the two groups
+ggplot(similarity_data, aes(x = similarity, fill = group, color = group)) +
+  geom_density(alpha = 0.6, bw = 0.02) +
+  scale_fill_manual(values = c("With LLM" = "#FBB4AE", "Without LLM" = "#B3CDE3")) +
+  scale_color_manual(values = c("With LLM" = "#FBB4AE", "Without LLM" = "#B3CDE3")) +
+  labs(title = "Cosine Similarity Within Groups", y = "Density", x = "Cosine Similarity") +
+  theme_classic(base_size = 14) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    axis.title.y = element_text(margin = margin(r = 10)),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    plot.margin = unit(c(1, 1, 1, 1), "cm")
+  ) +
+  guides(fill = guide_legend(title = NULL), color = guide_legend(title = NULL)) +
+  coord_cartesian(xlim = x_axis_range)
+
+# Calculate mean cosine similarity for each group
+mean_with_llm <- mean(similarity_data$similarity[similarity_data$group == "With LLM"])
+mean_without_llm <- mean(similarity_data$similarity[similarity_data$group == "Without LLM"])
+
+cat("Mean Cosine Similarity - With LLM: ", round(mean_with_llm, 3), "\n")
+cat("Mean Cosine Similarity - Without LLM: ", round(mean_without_llm, 3), "\n")
+```
+
+<!-- 
+
+library(ggplot2)
+
+similarity_data <- data.frame(
+  group = c(rep("With LLM", length(as.vector(similarity_within_llm))),
+            rep("Without LLM", length(as.vector(similarity_without_llm))),
+            rep("Between Groups", length(as.vector(similarity_between_groups)))),
+  similarity = c(as.vector(similarity_within_llm), as.vector(similarity_without_llm), as.vector(similarity_between_groups))
+)
+
+# Remove any rows with NA similarity values
+similarity_data <- similarity_data[!is.na(similarity_data$similarity), ]
+
+x_axis_range <- c(0, 0.5)
+
+# Plot with annotations
+ggplot(similarity_data, aes(x = similarity, fill = group, color = group)) +
+  geom_density(alpha = 0.6, bw = 0.02) +
+  scale_fill_manual(values = c("With LLM" = "#FBB4AE", "Without LLM" = "#B3CDE3", "Between Groups" = "#CCEBC5")) +
+  scale_color_manual(values = c("With LLM" = "#FBB4AE", "Without LLM" = "#B3CDE3", "Between Groups" = "#CCEBC5")) +
+  labs(title = "Cosine Similarity Within and Between Groups", y = "Density", x = "Cosine Similarity") +
+  theme_classic(base_size = 14) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    axis.title.y = element_text(margin = margin(r = 10)),
+    axis.title.x = element_text(margin = margin(t = 10)),
+    plot.margin = unit(c(1, 1, 1, 1), "cm")
+  ) +
+  guides(fill = guide_legend(title = NULL), color = guide_legend(title = NULL)) +
+  coord_cartesian(xlim = x_axis_range)
+  
+# Calculate mean cosine similarity for each group
+mean_with_llm <- mean(similarity_data$similarity[similarity_data$group == "With LLM"])
+mean_without_llm <- mean(similarity_data$similarity[similarity_data$group == "Without LLM"])
+mean_between_groups <- mean(similarity_data$similarity[similarity_data$group == "Between Groups"])
+
+cat("Mean Cosine Similarity - With LLM: ", round(mean_with_llm, 3), "\n")
+cat("Mean Cosine Similarity - Without LLM: ", round(mean_without_llm, 3), "\n")
+cat("Mean Cosine Similarity - Between Groups: ", round(mean_between_groups, 3), "\n")
+
+-->
+
+### Perform Topic Modeling with LDA
+
+*Run the code below.*
+
+```{r Topic-Modeling, exercise=TRUE, exercise.setup="cos-sim"}
+#preprocessed <- textProcessor(creativity_data$text, metadata = creativity_data)
+#out <- prepDocuments(preprocessed$documents, preprocessed$vocab, preprocessed$meta, lower.thresh = 2)
+
+#model_10 <- stm(documents = out$documents,
+#                vocab = out$vocab,
+#                data = out$meta,
+#                K = 10,
+#                max.em.its = 25,
+#                init.type = "Spectral",
+#                seed=42)
+plot(model_10,
+     type = "summary",
+     labeltype = "prob",
+     xlim = c(0, .30))
+```
+
+**If you are not seeing a topic modeling visualization below, please restart the App (*Start Over* button at the bottom of the topic list)**
+
+```{r , echo=FALSE}
+#sliderInput("nTerms", "Number of terms to display", min = 20, max = 40, value = 30)
+visOutput('lda')
+```
+
+```{r , context="server"}
+visOutput('lda')
+output$lda <- renderVis({
+      toLDAvisJson(model_10, out$documents)
+  })
+```
